@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include('Style'); ?>
+  </head>
+  <body>
+    <div class="app-container">
+      
+      <!-- QUADRO DE ALERTAS -->
+      <div id="alertBox" class="alert"></div>
+
+      <!-- TELA 1: LOGIN -->
+      <div id="viewLogin" class="auth-card">
+        <div class="header-brand">
+          <h1>Biblioteca Escolar</h1>
+          <p>Informe suas credenciais para acessar</p>
+        </div>
+        <form onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label for="loginEmail">E-mail</label>
+            <input type="email" id="loginEmail" placeholder="exemplo@email.com" required>
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Senha</label>
+            <input type="password" id="loginPassword" placeholder="Sua senha" required>
+          </div>
+          <button type="submit" id="btnLogin" class="btn">Entrar</button>
+        </form>
+        <div class="link-actions">
+          <button class="link-btn" onclick="switchView('viewForgot')">Esqueci a senha</button>
+          <button class="link-btn" onclick="switchView('viewRegister')">Criar Usuário</button>
+        </div>
+      </div>
+
+      <!-- TELA 2: ESQUECI A SENHA -->
+      <div id="viewForgot" class="auth-card hidden">
+        <div class="header-brand">
+          <h1>Recuperar Senha</h1>
+          <p>Enviaremos uma nova senha temporária para seu e-mail</p>
+        </div>
+        <form onsubmit="handleForgot(event)">
+          <div class="form-group">
+            <label for="forgotEmail">E-mail Cadastrado</label>
+            <input type="email" id="forgotEmail" placeholder="seuemail@escola.com" required>
+          </div>
+          <button type="submit" id="btnForgot" class="btn">Enviar Senha Temporária</button>
+        </form>
+        <button class="btn btn-secondary" onclick="switchView('viewLogin')">Voltar ao Login</button>
+      </div>
+
+      <!-- TELA 3: CADASTRO DE USUÁRIOS -->
+      <div id="viewRegister" class="auth-card hidden">
+        <div class="header-brand">
+          <h1>Novo Usuário</h1>
+          <p>Cadastre alunos, professores, funcionários ou admins</p>
+        </div>
+        <form onsubmit="handleRegister(event)">
+          <div class="form-group">
+            <label for="regId">Matrícula / ID (Opcional)</label>
+            <input type="text" id="regId" placeholder="Ex: USR-1020">
+          </div>
+          <div class="form-group">
+            <label for="regNome">Nome Completo</label>
+            <input type="text" id="regNome" required placeholder="Nome completo">
+          </div>
+          <div class="form-group">
+            <label for="regEmail">E-mail</label>
+            <input type="email" id="regEmail" required placeholder="email@escola.com">
+          </div>
+          <div class="form-group">
+            <label for="regSenha">Senha</label>
+            <input type="password" id="regSenha" required placeholder="Senha de acesso">
+          </div>
+          <div class="form-group">
+            <label for="regPerfil">Perfil do Usuário</label>
+            <select id="regPerfil">
+              <option value="Aluno">Aluno</option>
+              <option value="Professor">Professor</option>
+              <option value="Funcionário">Funcionário</option>
+              <option value="Admin">Admin</option>
+              <option value="Root">Root (Super Admin)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="regTelefone">Telefone</label>
+            <input type="text" id="regTelefone" placeholder="(00) 00000-0000">
+          </div>
+          <div class="form-group">
+            <label for="regTurma">ID da Turma (se Aluno)</label>
+            <input type="text" id="regTurma" placeholder="Ex: TURMA-9A">
+          </div>
+          <button type="submit" id="btnRegister" class="btn">Salvar Usuário</button>
+        </form>
+        <button class="btn btn-secondary" onclick="switchView('viewLogin')">Voltar ao Login</button>
+      </div>
+
+      <!-- TELA 4: DASHBOARD PRINCIPAL DA BIBLIOTECA -->
+      <div id="viewDashboard" class="hidden">
+        <div class="dashboard-header">
+          <div>
+            <h2 id="dashUserName">Sessão Ativa</h2>
+            <span id="dashUserRole" style="font-size:12px; opacity:0.8;"></span>
+          </div>
+          <button class="btn" style="width:auto; padding:8px 16px; background:#ef4444;" onclick="logout()">Sair</button>
+        </div>
+
+        <div class="dashboard-nav">
+          <button class="nav-tab active" onclick="loadTable('Usuarios', this)">Usuários</button>
+          <button class="nav-tab" onclick="loadTable('Obras', this)">Obras</button>
+          <button class="nav-tab" onclick="loadTable('Exemplares', this)">Exemplares</button>
+          <button class="nav-tab" onclick="loadTable('Emprestimos', this)">Empréstimos</button>
+          <button class="nav-tab" onclick="loadTable('Reservas', this)">Reservas</button>
+          <button class="nav-tab" onclick="loadTable('Categorias', this)">Categorias</button>
+          <button class="nav-tab" onclick="loadTable('Editoras', this)">Editoras</button>
+          <button class="nav-tab" onclick="loadTable('Turmas', this)">Turmas</button>
+        </div>
+
+        <div class="dashboard-content">
+          <h3 id="tableTitle">Tabela: Usuarios</h3>
+          <div class="table-responsive">
+            <table id="dataTable">
+              <thead><tr id="tableHeader"></tr></thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      let currentUser = null;
+
+      function showAlert(message, isSuccess = false) {
+        const alertBox = document.getElementById('alertBox');
+        alertBox.textContent = message;
+        alertBox.className = `alert ${isSuccess ? 'alert-success' : 'alert-danger'}`;
+        alertBox.style.display = 'block';
+      }
+
+      function hideAlert() {
+        document.getElementById('alertBox').style.display = 'none';
+      }
+
+      function switchView(viewId) {
+        hideAlert();
+        ['viewLogin', 'viewForgot', 'viewRegister', 'viewDashboard'].forEach(id => {
+          document.getElementById(id).classList.add('hidden');
+        });
+        document.getElementById(viewId).classList.remove('hidden');
+      }
+
+      function handleLogin(e) {
+        e.preventDefault();
+        hideAlert();
+
+        const email = document.getElementById('loginEmail').value;
+        const pass = document.getElementById('loginPassword').value;
+        const btn = document.getElementById('btnLogin');
+
+        btn.disabled = true;
+        btn.textContent = "Autenticando...";
+
+        google.script.run
+          .withSuccessHandler(res => {
+            btn.disabled = false;
+            btn.textContent = "Entrar";
+            if (res.success) {
+              currentUser = res.user;
+              document.getElementById('dashUserName').textContent = res.user.nome;
+              document.getElementById('dashUserRole').textContent = `Perfil: ${res.user.perfil} | E-mail: ${res.user.email}`;
+              switchView('viewDashboard');
+              loadTable('Usuarios', document.querySelector('.nav-tab.active'));
+            } else {
+              showAlert(res.message);
+            }
+          })
+          .withFailureHandler(err => {
+            btn.disabled = false;
+            btn.textContent = "Entrar";
+            showAlert("Erro na comunicação: " + err.message);
+          })
+          .loginUser(email, pass);
+      }
+
+      function handleRegister(e) {
+        e.preventDefault();
+        hideAlert();
+
+        const userData = {
+          id_usuario: document.getElementById('regId').value,
+          nome_completo: document.getElementById('regNome').value,
+          email: document.getElementById('regEmail').value,
+          senha: document.getElementById('regSenha').value,
+          perfil: document.getElementById('regPerfil').value,
+          telefone: document.getElementById('regTelefone').value,
+          id_turma: document.getElementById('regTurma').value,
+          status_conta: "Ativo"
+        };
+
+        const btn = document.getElementById('btnRegister');
+        btn.disabled = true;
+
+        google.script.run
+          .withSuccessHandler(res => {
+            btn.disabled = false;
+            if (res.success) {
+              showAlert(res.message, true);
+              e.target.reset();
+            } else {
+              showAlert(res.message);
+            }
+          })
+          .withFailureHandler(err => {
+            btn.disabled = false;
+            showAlert("Erro ao cadastrar: " + err.message);
+          })
+          .createUser(userData);
+      }
+
+      function handleForgot(e) {
+        e.preventDefault();
+        hideAlert();
+
+        const email = document.getElementById('forgotEmail').value;
+        const btn = document.getElementById('btnForgot');
+        btn.disabled = true;
+
+        google.script.run
+          .withSuccessHandler(res => {
+            btn.disabled = false;
+            if (res.success) {
+              showAlert(res.message, true);
+            } else {
+              showAlert(res.message);
+            }
+          })
+          .withFailureHandler(err => {
+            btn.disabled = false;
+            showAlert("Erro na requisição: " + err.message);
+          })
+          .forgotPassword(email);
+      }
+
+      function loadTable(tableName, element) {
+        if(element) {
+          document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+          element.classList.add('active');
+        }
+
+        document.getElementById('tableTitle').textContent = `Tabela: ${tableName}`;
+        const thead = document.getElementById('tableHeader');
+        const tbody = document.getElementById('tableBody');
+        thead.innerHTML = '';
+        tbody.innerHTML = '<tr><td colspan="10">Carregando dados...</td></tr>';
+
+        const userEmail = currentUser ? currentUser.email : '';
+        const userPerfil = currentUser ? currentUser.perfil : '';
+
+        google.script.run
+          .withSuccessHandler(data => {
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="10">Nenhum registro encontrado.</td></tr>';
+              return;
+            }
+
+            const headers = Object.keys(data[0]);
+            thead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+
+            data.forEach(row => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = headers.map(h => `<td>${row[h] !== undefined ? row[h] : ''}</td>`).join('');
+              tbody.appendChild(tr);
+            });
+          })
+          .getTableData(tableName, userEmail, userPerfil);
+      }
+
+      function logout() {
+        currentUser = null;
+        switchView('viewLogin');
+      }
+    </script>
+  </body>
+</html>
